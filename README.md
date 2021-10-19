@@ -2,7 +2,7 @@
 
 Draw the picture into the lark sheet
 
-<img src="./lark-sheet.png" width=200 />
+<img src="./image.png" width=200 />
 
 ## Install
 
