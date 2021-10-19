@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/chyroc/go-ptr v1.4.0
-	github.com/chyroc/lark v0.0.73
+	github.com/chyroc/lark v0.0.75
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/image v0.0.0-20210628002857-a66eb6448b8d
 )

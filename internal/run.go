@@ -21,6 +21,7 @@ type Request struct {
 	LarkAppID     string
 	LarkAppSecret string
 	LarkUserID    string
+	LarkSheet     string
 	ImagePath     string
 }
 
@@ -35,7 +36,7 @@ func Run(request Request) error {
 	imageColor := combineImageColor(image)
 
 	larkClient := lark.New(lark.WithAppCredential(request.LarkAppID, request.LarkAppSecret))
-	sheetClient, err := createSheet(ctx, larkClient, request.LarkUserID)
+	sheetClient, err := makeSheetClient(ctx, larkClient, request.LarkSheet, request.LarkUserID)
 	if err != nil {
 		return err
 	}
@@ -44,62 +45,66 @@ func Run(request Request) error {
 	return drawSheet(ctx, sheetClient, imageColor)
 }
 
-func createSheet(ctx context.Context, larkClient *lark.Lark, assignUserID string) (*larkext.Sheet, error) {
-	folderClient := larkext.NewFolder(larkClient, "")
+func makeSheetClient(ctx context.Context, larkClient *lark.Lark, sheetToken, assignUserID string) (*larkext.Sheet, error) {
+	if sheetToken == "" {
+		folderClient := larkext.NewFolder(larkClient, "")
 
-	sheetClient, err := folderClient.NewSheet(ctx, "draw-lark-sheet")
-	if err != nil {
-		return nil, err
-	}
-
-	_, _, err = larkClient.Drive.UpdateDriveMemberPermission(ctx, &lark.UpdateDriveMemberPermissionReq{
-		NeedNotification: ptr.Bool(true),
-		Type:             "sheet",
-		Token:            sheetClient.SheetToken(),
-		MemberID:         assignUserID,
-		MemberType:       "userid",
-		Perm:             "full_access",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// 保证有 100 x 100 个格子，且每个格子是 6x6 的
-
-	meta, err := sheetClient.Meta(ctx)
-	if err != nil {
-		return nil, err
-	}
-	sheet := meta.Sheets[0]
-	if sheet.RowCount > 100 {
-		if err = sheetClient.DeleteRows(ctx, sheet.SheetID, 101, int(sheet.RowCount-100)); err != nil {
+		sheetClient, err := folderClient.NewSheet(ctx, "draw-lark-sheet")
+		if err != nil {
 			return nil, err
 		}
-	} else if sheet.RowCount < 100 {
-		if err = sheetClient.AddRows(ctx, sheet.SheetID, int(100-sheet.RowCount)); err != nil {
+
+		_, _, err = larkClient.Drive.UpdateDriveMemberPermission(ctx, &lark.UpdateDriveMemberPermissionReq{
+			NeedNotification: ptr.Bool(true),
+			Type:             "sheet",
+			Token:            sheetClient.SheetToken(),
+			MemberID:         assignUserID,
+			MemberType:       "userid",
+			Perm:             "full_access",
+		})
+		if err != nil {
 			return nil, err
 		}
-	}
 
-	if sheet.ColumnCount > 100 {
-		if err = sheetClient.DeleteCols(ctx, sheet.SheetID, 101, int(sheet.ColumnCount-100)); err != nil {
+		// 保证有 100 x 100 个格子，且每个格子是 6x6 的
+
+		meta, err := sheetClient.Meta(ctx)
+		if err != nil {
 			return nil, err
 		}
-	} else if sheet.ColumnCount < 100 {
-		if err = sheetClient.AddCols(ctx, sheet.SheetID, int(100-sheet.ColumnCount)); err != nil {
+		sheet := meta.Sheets[0]
+		if sheet.RowCount > 100 {
+			if err = sheetClient.DeleteRows(ctx, sheet.SheetID, 101, int(sheet.RowCount-100)); err != nil {
+				return nil, err
+			}
+		} else if sheet.RowCount < 100 {
+			if err = sheetClient.AddRows(ctx, sheet.SheetID, int(100-sheet.RowCount)); err != nil {
+				return nil, err
+			}
+		}
+
+		if sheet.ColumnCount > 100 {
+			if err = sheetClient.DeleteCols(ctx, sheet.SheetID, 101, int(sheet.ColumnCount-100)); err != nil {
+				return nil, err
+			}
+		} else if sheet.ColumnCount < 100 {
+			if err = sheetClient.AddCols(ctx, sheet.SheetID, int(100-sheet.ColumnCount)); err != nil {
+				return nil, err
+			}
+		}
+
+		if err = sheetClient.SetRowsSize(ctx, sheet.SheetID, 1, 100, 6); err != nil {
 			return nil, err
 		}
+
+		if err = sheetClient.SetColsSize(ctx, sheet.SheetID, 1, 100, 6); err != nil {
+			return nil, err
+		}
+
+		sheetToken = sheetClient.SheetToken()
 	}
 
-	if err = sheetClient.SetRowsSize(ctx, sheet.SheetID, 1, 100, 6); err != nil {
-		return nil, err
-	}
-
-	if err = sheetClient.SetColsSize(ctx, sheet.SheetID, 1, 100, 6); err != nil {
-		return nil, err
-	}
-
-	return sheetClient, nil
+	return larkext.NewSheet(larkClient, sheetToken), nil
 }
 
 func parseImage(imagePath string, size int) (image.Image, error) {
@@ -140,10 +145,10 @@ func max(a, b int) int {
 }
 
 // []map[[4]int]string
-func combineImageColor(image image.Image) []combineColor {
+func combineImageColor(image image.Image) map[string][][4]int {
 	bounds := image.Bounds()
 
-	result := []combineColor{}
+	result := map[string][][4]int{}
 	for x := 0; x < bounds.Size().X; x++ {
 		key := [4]int{}
 		prefixColor := ""
@@ -160,7 +165,7 @@ func combineImageColor(image image.Image) []combineColor {
 					key[3] = y
 				} else {
 					// 遇到了不同值，前一个需要结束，现在这个需要开始
-					result = append(result, combineColor{key, prefixColor})
+					result[prefixColor] = append(result[prefixColor], key)
 					prefixColor = pointColor
 					key = [4]int{x, y, x, y}
 				}
@@ -168,7 +173,7 @@ func combineImageColor(image image.Image) []combineColor {
 
 			if y == bounds.Size().Y-1 {
 				// 最后一个，结束
-				result = append(result, combineColor{key, prefixColor})
+				result[prefixColor] = append(result[prefixColor], key)
 			}
 		}
 	}
@@ -176,34 +181,33 @@ func combineImageColor(image image.Image) []combineColor {
 	return result
 }
 
-func drawSheet(ctx context.Context, sheetClient *larkext.Sheet, colors []combineColor) error {
+func drawSheet(ctx context.Context, sheetClient *larkext.Sheet, colors map[string][][4]int) error {
 	meta, err := sheetClient.Meta(ctx)
 	if err != nil {
 		return err
 	}
 	sheetID := meta.Sheets[0].SheetID
-	for _, color := range colors {
-		if color.Color == "#ffffff" {
+	styles := []*lark.BatchSetSheetStyleReqData{}
+	for color, cells := range colors {
+		if color == "#ffffff" {
 			continue
 		}
-		cellRange := larkext.CellRange(sheetID, color.Point[0], color.Point[1], color.Point[2], color.Point[3])
-		fmt.Println("写入 Sheet:", cellRange, color.Color)
-		for i := 0; i < 3; i++ {
-			err = sheetClient.SetCellStyle(ctx, cellRange, &lark.SetSheetStyleReqAppendStyleStyle{
-				BackColor: &color.Color,
-			})
-			if err == nil {
-				break
-			} else {
-				if i == 2 {
-					return err
-				}
-				continue
-			}
+		cellRanges := []string{}
+		for _, v := range cells {
+			cellRange := larkext.CellRange(sheetID, v[0]+1, v[1]+1, v[2]+1, v[3]+1)
+			cellRanges = append(cellRanges, cellRange)
 		}
+
+		styles = append(styles, &lark.BatchSetSheetStyleReqData{
+			Ranges: cellRanges,
+			Style:  &lark.BatchSetSheetStyleReqDataStyle{BackColor: ptr.String(color)},
+		})
 	}
 
-	return nil
+	fmt.Println("写入 Sheet:", len(styles))
+	err = sheetClient.BatchSetCellStyle(ctx, styles)
+
+	return err
 }
 
 type combineColor struct {

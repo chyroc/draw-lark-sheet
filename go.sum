@@ -1,8 +1,8 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/chyroc/go-ptr v1.4.0 h1:o+GxDzrmIdWaJmWU5CRWVX+31UIcQUNE4SauRWuN6O8=
 github.com/chyroc/go-ptr v1.4.0/go.mod h1:8x4QPkggRrkpveFHzb27gxqvqf2/ebzNS741UsxlbSQ=
-github.com/chyroc/lark v0.0.73 h1:+xchu9fxqofQEAmw8Focd3XFqGJyYuVy65gDjV2MWnQ=
-github.com/chyroc/lark v0.0.73/go.mod h1:fXPuoV+ljt237twZ08VCKuYjiamyZI8zB8ZyPBMV2qY=
+github.com/chyroc/lark v0.0.75 h1:G0PiguU+M2KYxBtObsJdalU0+E7/2+A7LaIg8lKfN4g=
+github.com/chyroc/lark v0.0.75/go.mod h1:fXPuoV+ljt237twZ08VCKuYjiamyZI8zB8ZyPBMV2qY=
 github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d h1:U+s90UTSYgptZMwQh2aRr3LuazLJIa+Pg3Kc1ylSYVY=
 github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsrgA7czyZG/E6dU=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

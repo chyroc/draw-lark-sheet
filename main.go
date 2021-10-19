@@ -15,6 +15,7 @@ func main() {
 			&cli.StringFlag{Name: "lark-app-id"},
 			&cli.StringFlag{Name: "lark-app-secret"},
 			&cli.StringFlag{Name: "lark-user-id"},
+			&cli.StringFlag{Name: "lark-sheet-token"},
 			&cli.StringFlag{Name: "image-path"},
 		},
 		Action: func(c *cli.Context) error {
@@ -22,6 +23,7 @@ func main() {
 				LarkAppID:     c.String("lark-app-id"),
 				LarkAppSecret: c.String("lark-app-secret"),
 				LarkUserID:    c.String("lark-user-id"),
+				LarkSheet:    c.String("lark-sheet-token"),
 				ImagePath:     c.String("image-path"),
 			})
 		},
